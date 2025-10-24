@@ -44,6 +44,8 @@ export class RabbitmqModule {
       RabbitmqConnectionService,
       RabbitmqConfigurerService,
       ProducerService,
+      InboxMessageHandler,
+      ConsumerService,
     ];
 
     const exports: any[] = [
@@ -51,6 +53,8 @@ export class RabbitmqModule {
       RabbitmqConnectionService,
       RabbitmqConfigurerService,
       ProducerService,
+      InboxMessageHandler,
+      ConsumerService,
     ];
 
     if (options.inboxRepoProvider) {
@@ -61,8 +65,6 @@ export class RabbitmqModule {
     if (options.messageHandlerRegistryProvider) {
       providers.push(options.messageHandlerRegistryProvider);
       exports.push('MESSAGE_HANDLER_REGISTRY');
-      providers.push(InboxMessageHandler, ConsumerService);
-      exports.push(InboxMessageHandler, ConsumerService);
     }
 
     return {
