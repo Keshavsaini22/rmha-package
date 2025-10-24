@@ -21,3 +21,4 @@ export * from './interfaces';
 
 // Entities
 export * from './entities';
+export { OutboxMessageRelay } from './services/outbox-message-relay.service'; // ✅ Export directly

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import * as RabbitMQ from 'amqplib';
 import { RabbitmqConnectionService } from './rabbitmq-connection.service';
 import { IInboxRepository } from '../interfaces/inbox-repository.interface';
@@ -8,37 +8,56 @@ import { IMessageHandlerRegistry } from '../interfaces/message-handler-registry.
 export class InboxMessageHandler {
   constructor(
     private readonly rabbitmqConnectionService: RabbitmqConnectionService,
-@Inject('MESSAGE_HANDLER_REGISTRY')
-    private readonly signatureTypes: IMessageHandlerRegistry,
+    @Optional()
+    @Inject('MESSAGE_HANDLER_REGISTRY')
+    private readonly handlerRegistry: IMessageHandlerRegistry,
+    @Optional()
     @Inject('INBOX_REPOSITORY')
     private readonly inboxMessageRepository: IInboxRepository,
-  ) { }
+  ) {}
 
   getSignatureType() {
-    return Object.keys(this.signatureTypes.getSignatureTypes());
+    if (!this.handlerRegistry) {
+      console.warn('⚠️  MESSAGE_HANDLER_REGISTRY not provided.');
+      return [];
+    }
+    return Object.keys(this.handlerRegistry.getSignatureTypes());
   }
 
   async handleMessage(message: RabbitMQ.Message, max_retry_counts: number) {
+    if (!this.handlerRegistry || !this.inboxMessageRepository) {
+      console.warn('⚠️  Handlers or Inbox repository not configured.');
+      return;
+    }
+
     const messageId = message.properties.messageId;
     const message_type =
       message.properties.type || message.properties.headers.type;
-    const signatureTypes = this.signatureTypes.getSignatureTypes();
+    const signatureTypes = this.handlerRegistry.getSignatureTypes();
     const handlers = signatureTypes[message_type];
+
+    if (!handlers) {
+      console.log(`INFO No handlers found for message type: ${message_type}`);
+      return;
+    }
 
     const handlerPromises = handlers.map(async (lazyHandler) => {
       const handler = await lazyHandler;
       let retryCount = max_retry_counts;
+
       const duplicateMessage =
         await this.inboxMessageRepository.getInboxMessageById(
           messageId,
           handler.getHandlerName(),
         );
+
       if (duplicateMessage) {
         console.log(
           `INFO Message with id ${messageId} already handled with ${handler.getHandlerName()}. Duplicate message ignored.`,
         );
         return;
       }
+
       const parsedMessage =
         this.rabbitmqConnectionService.robustParseMessageContent(message);
 

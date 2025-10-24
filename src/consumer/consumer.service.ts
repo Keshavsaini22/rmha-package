@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import * as RabbitMQ from 'amqplib';
+import { RabbitmqConfigurerService } from '../services/rabbitmq-configurer.service';
+import { InboxMessageHandler } from '../services/inbox-message-handler.service';
+import { RabbitmqConnectionService } from '../services/rabbitmq-connection.service';
 import { ConfigType } from '../interfaces';
-import { InboxMessageHandler, RabbitmqConfigurerService, RabbitmqConnectionService } from '../services';
-
 
 @Injectable()
 export class ConsumerService {
@@ -14,15 +15,24 @@ export class ConsumerService {
   constructor(
     private readonly rabbitmqConfigurerService: RabbitmqConfigurerService,
     private readonly connection: RabbitmqConnectionService,
+    @Optional()
+    @Inject('MESSAGE_HANDLER_REGISTRY')
     private readonly messageHandler: InboxMessageHandler,
   ) {
-    this.config = this.connection.getConnectionConfiguration();
-    this.prefetchLimit = this.config.consumeMessageLimit;
-    this.signatureTypes = this.messageHandler.getSignatureType();
-    this.connection.rabbitMqEvents.on('connected', this.consume.bind(this));
+    // Only initialize if messageHandler is provided
+    if (this.messageHandler) {
+      this.config = this.connection.getConnectionConfiguration();
+      this.prefetchLimit = this.config.consumeMessageLimit;
+      this.signatureTypes = this.messageHandler.getSignatureType();
+      this.connection.rabbitMqEvents.on('connected', this.consume.bind(this));
+    }
   }
 
   async consumeMessage(limit: number) {
+    if (!this.messageHandler) {
+      console.warn('⚠️  MESSAGE_HANDLER_REGISTRY not provided. Consumer skipped.');
+      return;
+    }
     this.prefetchLimit = limit || this.prefetchLimit;
     await this.connection.connect();
   }

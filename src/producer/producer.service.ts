@@ -1,8 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OutboxMessage } from '../entities';
-import { ConfigType, IOutboxRepository, RabbitMQPublishMessage } from '../interfaces';
+import { ConfigType, RabbitMQPublishMessage } from '../interfaces';
 import { RabbitmqConfigurerService, RabbitmqConnectionService } from '../services';
-
 
 @Injectable()
 export class ProducerService {
@@ -12,8 +11,7 @@ export class ProducerService {
   constructor(
     private readonly rabbitmqConfigurerService: RabbitmqConfigurerService,
     private readonly rabbitmqConnectionService: RabbitmqConnectionService,
-    @Inject('OUTBOX_REPOSITORY') 
-    private readonly outboxMessageRepository: IOutboxRepository,
+    // ✅ NO OUTBOX_REPOSITORY injection
   ) {
     this.connection = this.rabbitmqConnectionService;
     this.config = this.connection.getConnectionConfiguration();
@@ -52,14 +50,13 @@ export class ProducerService {
       const isPublished = await this.connection.publish(messageToPublish);
       if (!isPublished) throw new Error('Message could not be published.');
 
-      outboxMessage.markAsSent();
-
-      await this.outboxMessageRepository.save(outboxMessage);
+      console.log(`✅ Published message ${outboxMessage.message_id} to ${this.config.fanoutExchange}`);
     } catch (error) {
       console.log(
-        `Error while publishing message ${outboxMessage.type} with id ${outboxMessage.message_id}`,
+        `❌ Error while publishing message ${outboxMessage.type} with id ${outboxMessage.message_id}`,
         error,
       );
+      throw error;
     }
   }
 }
