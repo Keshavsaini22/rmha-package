@@ -1,6 +1,6 @@
 {
   "name": "rmha-nestjs",
-  "version": "1.0.0-beta.11",
+  "version": "1.0.0",
   "description": "NestJS RabbitMQ package - Resilient Message Handling Architecture",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,9 +17,13 @@
   "keywords": [
     "nestjs",
     "rabbitmq",
+    "event-driven-architecture",
     "rmha",
-    "message-handling",
-    "resilient"
+    "resilient-message-handling-architecture",
+    "transactional-outbox-pattern",
+    "inbox-pattern",
+    "outbox-pattern",
+    "amqplib"
   ],
   "author": "Keshav Saini",
   "license": "MIT",
